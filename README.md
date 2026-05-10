@@ -1,6 +1,94 @@
-# Hu2En — Hungarian Video → English Subtitles (fully local)
+# Hu2En — Hungarian Video → English Subtitles
 
-A fully local pipeline for transcribing Hungarian-language video, labelling speakers, and producing accurate English subtitles. No data leaves your machine.
+English subtitles for Hungarian political video, generated locally and open for community correction.
+
+---
+
+## Just here for the subtitles?
+
+Download the SRT from the [`subtitles/`](subtitles/) folder and load it in your player.
+
+**VLC** — drag the `.srt` onto the playing video, or *Subtitle → Add Subtitle File…*
+
+**mpv** — put the `.srt` in the same folder as the video with the same base name — it loads automatically:
+```
+video.mkv
+video.en.srt   ← mpv picks this up on its own
+```
+
+**IINA (macOS)** — *File → Open Subtitle…* or drag-and-drop onto the window.
+
+Want to correct a mistranslation? See [CONTRIBUTING.md](CONTRIBUTING.md) — no coding needed.
+
+---
+
+## Want to generate subtitles yourself?
+
+The pipeline runs fully locally on Apple Silicon — no data leaves your machine.
+
+### What you need
+
+- Apple Silicon Mac (M1 Max or later — 64 GB unified memory recommended)
+- [Homebrew](https://brew.sh)
+- A free [HuggingFace](https://huggingface.co) account
+
+### Setup
+
+```bash
+# Install dependencies
+brew install uv ffmpeg
+
+# Clone and install
+git clone https://github.com/kyle-ryan/Hu2En_open-translation.git
+cd Hu2En_open-translation
+uv sync
+```
+
+Then accept the speaker diarisation model licence at **https://huggingface.co/pyannote/speaker-diarization-community-1** (free account required), and set your HuggingFace token:
+
+```bash
+export HF_TOKEN=hf_your_token_here   # add to ~/.zshrc to make permanent
+```
+
+### Run
+
+```bash
+.venv/bin/vidtrans path/to/video.mkv
+```
+
+This produces `<video name>.en.srt` next to the video. For best translation results, tell it what kind of content it is:
+
+```bash
+.venv/bin/vidtrans video.mkv --domain "parliamentary debate"
+```
+
+### Embed subtitles permanently with ffmpeg
+
+```bash
+ffmpeg -i video.mkv -i video.en.srt \
+  -c copy -c:s srt -metadata:s:s:0 language=eng \
+  video_with_subs.mkv
+```
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) — corrections to existing translations, new subtitle files, and code improvements are all welcome.
+
+---
+
+## Licence
+
+Apache 2.0 — see [LICENSE](LICENSE).
+The models used by this pipeline carry their own licences — review them before commercial use.
+
+---
+
+<details>
+<summary>Pipeline and technical details</summary>
+
+### How it works
 
 ```
 AV1 video (Hungarian)
@@ -12,165 +100,33 @@ AV1 video (Hungarian)
   └─ SRT writer       <stem>.en.srt  (+ optional <stem>.hu.srt)
 ```
 
-All heavy models run locally via **MLX** (Apple Silicon) and **PyTorch MPS/CPU**.
+All models run locally via MLX (Metal) and PyTorch MPS/CPU.
 
----
+### Models
 
-## Requirements
+| Stage | Model |
+|-------|-------|
+| Speech-to-text | [mlx-community/whisper-large-v3-mlx](https://huggingface.co/mlx-community/whisper-large-v3-mlx) |
+| Speaker diarisation | [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) |
+| Translation | [mlx-community/Qwen3-32B-8bit](https://huggingface.co/mlx-community/Qwen3-32B-8bit) |
 
-| Requirement | Notes |
-|-------------|-------|
-| Apple Silicon Mac | M1 Max or later recommended |
-| 64 GB unified memory | Qwen3-32B-8bit alone needs ~34 GB |
-| macOS 14+ | MLX Metal backend |
-| Python 3.11 | Managed via `uv` |
-| [uv](https://docs.astral.sh/uv/) | `brew install uv` |
-| ffmpeg | `brew install ffmpeg` |
-| HuggingFace account | Free — token needed for pyannote gated model |
+Models download automatically on first run and cache locally.
 
----
+### Resume flags
 
-## One-time setup
-
-### 1 — Clone and install
+Each stage writes a checkpoint — if something fails you don't have to start from scratch.
 
 ```bash
-git clone https://github.com/kyle-ryan/Hu2En_open-translatation.git
-cd Hu2En_open-translatation
-uv sync          # creates .venv and installs all dependencies
+.venv/bin/vidtrans video.mkv --skip-whisper      # Whisper done, re-run diarisation
+.venv/bin/vidtrans video.mkv --skip-transcribe   # Jump straight to translation
+.venv/bin/vidtrans video.mkv --skip-translate    # Write SRT in source language only
+.venv/bin/vidtrans video.mkv --hu-srt            # Also output a Hungarian SRT
 ```
 
-### 2 — Accept the pyannote model licence
+### Translation quality
 
-Visit **https://huggingface.co/pyannote/speaker-diarization-community-1** and click *Agree and access repository*. A free HuggingFace account is required.
+- `--domain` gives the translation model context — always set it to match your content
+- Speaker labels are passed through so the model maintains consistent voice per speaker
+- Repeated hallucinated segments (common on silence/music) are deduplicated before translation
 
-### 3 — Set your HuggingFace token
-
-```bash
-export HF_TOKEN=hf_your_token_here
-```
-
-Add this to your `~/.zshrc` or `~/.bash_profile` to make it permanent.
-
-> **Security note:** never paste your token into code or commit it to git. The pipeline reads it exclusively from the environment variable.
-
----
-
-## Usage
-
-```bash
-# Full pipeline — transcribe, diarise, translate
-.venv/bin/vidtrans path/to/video.mkv
-
-# Also write a Hungarian SRT
-.venv/bin/vidtrans video.mkv --hu-srt
-
-# Specify content type for better translation quality
-.venv/bin/vidtrans video.mkv --domain "political documentary interview"
-
-# Custom output directory
-.venv/bin/vidtrans video.mkv --out ~/Desktop/output/
-```
-
-### Resume flags — restart a failed or interrupted run
-
-Each stage writes a checkpoint. If something fails mid-run you don't have to start over.
-
-```bash
-# Whisper finished but pyannote crashed → resume from diarisation
-.venv/bin/vidtrans video.mkv --skip-whisper
-
-# Both STT stages done → jump straight to translation
-.venv/bin/vidtrans video.mkv --skip-transcribe
-
-# Skip translation entirely — write SRT in source language only
-.venv/bin/vidtrans video.mkv --skip-translate
-```
-
-### Stage checkpoints
-
-| File | Created after |
-|------|---------------|
-| `tmp/<stem>.wav` | ffmpeg extraction |
-| `<stem>.whisper.json` | mlx-whisper transcription |
-| `<stem>.json` | pyannote diarisation + merge |
-| `<stem>.en.srt` | Qwen3 translation |
-
----
-
-## Attaching subtitles to your video
-
-### Soft subtitles (recommended — toggleable in any player)
-
-```bash
-# Add as a subtitle track — video is not re-encoded
-ffmpeg -i video.mkv -i video.en.srt \
-  -c copy -c:s srt \
-  -metadata:s:s:0 language=eng \
-  video_with_subs.mkv
-```
-
-To include both languages:
-
-```bash
-ffmpeg -i video.mkv -i video.en.srt -i video.hu.srt \
-  -c copy -c:s srt \
-  -metadata:s:s:0 language=eng -metadata:s:s:0 title="English" \
-  -metadata:s:s:1 language=hun -metadata:s:s:1 title="Hungarian" \
-  video_with_subs.mkv
-```
-
-### Player quick-start (no encoding needed)
-
-**VLC** — drag the `.srt` file onto the playing video, or *Subtitle → Add Subtitle File…*
-
-**mpv** — place the `.srt` file in the same directory with the same base name; mpv loads it automatically:
-```bash
-mpv video.mkv   # picks up video.en.srt automatically
-```
-
-**IINA (macOS)** — *File → Open Subtitle…* or drag-and-drop onto the window.
-
-### Hard subtitles (burned into picture — not recommended unless required)
-
-```bash
-ffmpeg -i video.mkv \
-  -vf "subtitles=video.en.srt:force_style='FontName=Arial,FontSize=24'" \
-  -c:a copy \
-  video_hardsub.mp4
-```
-
----
-
-## Models used
-
-| Stage | Model | Runtime |
-|-------|-------|---------|
-| Speech-to-text | [mlx-community/whisper-large-v3-mlx](https://huggingface.co/mlx-community/whisper-large-v3-mlx) | MLX (Metal) |
-| Speaker diarisation | [pyannote/speaker-diarization-community-1](https://huggingface.co/pyannote/speaker-diarization-community-1) | PyTorch MPS |
-| Translation | [mlx-community/Qwen3-32B-8bit](https://huggingface.co/mlx-community/Qwen3-32B-8bit) | MLX (Metal) |
-
-All models are downloaded automatically on first run via HuggingFace Hub and cached locally.
-
----
-
-## Translation quality notes
-
-- The `--domain` flag provides context to the translation model. Always set it to match your content — it meaningfully improves register and terminology.
-- Speaker labels (e.g. `SPEAKER_00`) are passed to the model so it can maintain consistent voice across a speaker's turns.
-- Segments that Whisper hallucinates repeatedly (a known issue on music/silence) are deduplicated before translation and copied rather than re-inferred.
-- Translations can be corrected manually by editing `<stem>.json` and re-running `--skip-transcribe`.
-
----
-
-## Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for how to submit translation corrections, code improvements, and new language support.
-
----
-
-## Licence
-
-Apache 2.0 — see [LICENSE](LICENSE).
-
-The models used by this pipeline have their own licences and terms of use. Review them before use in commercial or derivative works.
+</details>
