@@ -6,7 +6,7 @@ caller can do further work without the weights sitting in the Metal cache.
 Prompt design
 -------------
 Each chunk includes:
-  - a system prompt with domain context
+  - a system prompt with domain context (sanitised before injection)
   - a read-only context window of the N preceding translated lines so Qwen
     has continuity across chunk boundaries
   - speaker labels on every line so register/voice can be preserved
@@ -15,11 +15,31 @@ Each chunk includes:
 """
 
 import gc
+import re
 from tqdm import tqdm
 
 MODEL_REPO  = "mlx-community/Qwen3-32B-8bit"
 CHUNK_SIZE  = 20   # segments per translation call
 CONTEXT_WIN = 3    # preceding translated lines shown as read-only context
+
+# Domain hint constraints — prevents prompt injection via --domain
+_DOMAIN_MAX_LEN = 200
+
+
+def _sanitise_domain(domain: str) -> str:
+    """Collapse whitespace, strip control characters, cap length.
+
+    The domain hint is injected directly into the system prompt. Without
+    sanitisation a crafted value could break prompt structure or inject
+    additional instructions. This is especially important now the tool is
+    public and accepts arbitrary --domain values.
+    """
+    # Strip all control characters (includes newlines, tabs, null bytes)
+    domain = re.sub(r"[\x00-\x1f\x7f]", " ", domain)
+    # Collapse runs of whitespace to a single space
+    domain = " ".join(domain.split())
+    # Hard cap — anything longer is almost certainly not a legitimate content type
+    return domain[:_DOMAIN_MAX_LEN]
 
 
 def _free_mlx_memory() -> None:
@@ -33,8 +53,8 @@ def _free_mlx_memory() -> None:
 
 def _build_prompt(
     chunk: list[dict],
-    context_lines: list[str],  # already-translated lines from previous chunk
-    domain_hint: str,
+    context_lines: list[str],
+    domain_hint: str,          # must already be sanitised before passing in
 ) -> str:
     system = (
         "You are a professional Hungarian-to-English translator working on a "
@@ -105,6 +125,8 @@ def _translate_chunk(
 def run(segments: list[dict], domain_hint: str = "parliamentary session recording") -> list[dict]:
     from mlx_lm import load
 
+    domain_hint = _sanitise_domain(domain_hint)
+
     # ── Deduplicate: build a cache of text → translation so identical
     #    segments (e.g. repeated subtitle watermarks) are inferred once.
     translation_cache: dict[str, str] = {}
@@ -115,7 +137,6 @@ def run(segments: list[dict], domain_hint: str = "parliamentary session recordin
     result = [s.copy() for s in segments]
     context_lines: list[str] = []   # rolling window of recent translations
 
-    # Identify which segments need inference (not already cached)
     chunks = [segments[i:i + CHUNK_SIZE] for i in range(0, len(segments), CHUNK_SIZE)]
     offset = 0
 
@@ -133,12 +154,14 @@ def run(segments: list[dict], domain_hint: str = "parliamentary session recordin
                 for seg, en_text in zip(needs_inference, translations):
                     translation_cache[seg["hu_text"]] = en_text
 
-            # Apply cached translations to every segment in the chunk
+            # Apply cached translations — use enumerate to avoid list.index()
+            # which would silently write the wrong entry for duplicate hu_text
+            # values within a chunk.
             chunk_translations = []
-            for seg in chunk:
+            for j, seg in enumerate(chunk):
                 en_text = translation_cache[seg["hu_text"]]
                 chunk_translations.append(en_text)
-                result[offset + chunk.index(seg)]["en_text"] = en_text
+                result[offset + j]["en_text"] = en_text
 
             # Advance context window with this chunk's output
             new_ctx = [
