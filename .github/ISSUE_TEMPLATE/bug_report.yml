@@ -1,5 +1,5 @@
 name: Pipeline bug report
-description: Something went wrong running vidtrans locally
+description: Something went wrong running Hu2En locally
 labels: ["bug"]
 body:
   - type: dropdown

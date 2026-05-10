@@ -1,4 +1,4 @@
-# Contributing to vidtrans
+# Contributing to Hu2En
 
 Thank you for helping improve this project. Contributions fall into two categories:
 

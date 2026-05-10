@@ -1,4 +1,4 @@
-# vidtrans — Hungarian Video → English Subtitles (fully local)
+# Hu2En — Hungarian Video → English Subtitles (fully local)
 
 A fully local pipeline for transcribing Hungarian-language video, labelling speakers, and producing accurate English subtitles. No data leaves your machine.
 
