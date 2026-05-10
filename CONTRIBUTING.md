@@ -60,8 +60,8 @@ This loads the corrected `.json` and writes a fresh `.en.srt` without running an
 ### Setting up for development
 
 ```bash
-git clone https://github.com/kyle-ryan/Hu2En_open-translatation.git
-cd Hu2En_open-translatation
+git clone https://github.com/kyle-ryan/Hu2En_open-translation.git
+cd Hu2En_open-translation
 uv sync
 ```
 
