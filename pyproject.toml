@@ -1,0 +1,27 @@
+[project]
+name = "vidtrans"
+version = "0.1.0"
+description = "Local AV1 → Hungarian STT → speaker diarization → English translation → SRT"
+readme = "README.md"
+authors = [
+    { name = "Kyle Ryan", email = "kyle.ryan@xydus.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "mlx-whisper>=0.4.0",
+    "mlx-lm>=0.21.0",
+    "pyannote.audio>=3.1.0",
+    "torch>=2.2.0",
+    "torchaudio>=2.2.0",
+    "ffmpeg-python>=0.2.0",
+    "numpy>=1.26.0",
+    "tqdm>=4.66.0",
+    "huggingface-hub>=0.23.0",
+]
+
+[project.scripts]
+vidtrans = "vidtrans.pipeline:main"
+
+[build-system]
+requires = ["uv_build>=0.11.11,<0.12.0"]
+build-backend = "uv_build"

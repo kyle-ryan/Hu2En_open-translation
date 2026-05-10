@@ -1,0 +1,66 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# ── Virtual environment ───────────────────────────────────────────────────────
+.venv/
+.python-version
+
+# ── Environment / secrets ─────────────────────────────────────────────────────
+# Never commit tokens or credentials.
+.env
+.env.*
+*.env
+
+# ── Pipeline output (generated artifacts, potentially private speech) ─────────
+# Transcripts and translations may contain personal or copyright-protected
+# speech.  Keep them local; share only via secure, agreed channels.
+*.json
+*.whisper.json
+*.srt
+*.vtt
+
+# ── Published subtitles (tracked — open for community correction) ─────────────
+!subtitles/*.srt
+!subtitles/*.vtt
+!subtitles/*.json
+!subtitles/*.whisper.json
+
+# ── Media files (large, copyright-encumbered) ─────────────────────────────────
+tmp/
+*.wav
+*.mp3
+*.flac
+*.m4a
+*.aac
+*.ogg
+*.mp4
+*.mkv
+*.avi
+*.mov
+*.webm
+*.ts
+*.jpg
+*.jpeg
+*.png
+*.gif
+*.webp
+
+# ── Text metadata downloaded with video ───────────────────────────────────────
+*Description*.txt
+*description*.txt
+
+# ── macOS ─────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo

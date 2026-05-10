@@ -1,0 +1,75 @@
+name: Pipeline bug report
+description: Something went wrong running vidtrans locally
+labels: ["bug"]
+body:
+  - type: dropdown
+    id: chip
+    attributes:
+      label: Apple Silicon chip
+      options:
+        - M1
+        - M1 Pro
+        - M1 Max
+        - M1 Ultra
+        - M2
+        - M2 Pro
+        - M2 Max
+        - M2 Ultra
+        - M3
+        - M3 Pro
+        - M3 Max
+        - M4
+        - M4 Pro
+        - M4 Max
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: ram
+    attributes:
+      label: Unified memory
+      placeholder: "e.g. 64 GB"
+    validations:
+      required: true
+
+  - type: input
+    id: macos
+    attributes:
+      label: macOS version
+      placeholder: "e.g. 15.4"
+    validations:
+      required: true
+
+  - type: input
+    id: command
+    attributes:
+      label: Command run
+      placeholder: "e.g. vidtrans video.mkv --skip-whisper --domain \"political debate\""
+    validations:
+      required: true
+
+  - type: input
+    id: stage
+    attributes:
+      label: Which stage failed?
+      placeholder: "e.g. ffmpeg extraction / Whisper / pyannote / Qwen3 translation"
+    validations:
+      required: true
+
+  - type: textarea
+    id: error
+    attributes:
+      label: Full error output
+      description: Paste the complete terminal output including the traceback
+      render: shell
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Anything else that might be relevant
+    validations:
+      required: false

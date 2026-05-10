@@ -1,0 +1,53 @@
+name: Translation correction
+description: Report an error or suggest an improvement to the English subtitles
+labels: ["translation"]
+body:
+  - type: input
+    id: file
+    attributes:
+      label: Subtitle file
+      description: Which file contains the error?
+      placeholder: "e.g. HU_PM_election_transition_2026-05-09.en.srt"
+    validations:
+      required: true
+
+  - type: input
+    id: segment
+    attributes:
+      label: Segment number and timestamp
+      description: The sequence number and start timestamp from the SRT file
+      placeholder: "e.g. #1842  00:51:22,500"
+    validations:
+      required: true
+
+  - type: textarea
+    id: original
+    attributes:
+      label: Current English text
+      description: Copy the text exactly as it appears now
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed English text
+      description: Your corrected version
+    validations:
+      required: true
+
+  - type: input
+    id: hu_text
+    attributes:
+      label: Hungarian source text
+      description: The hu_text from the same segment (helps reviewers verify)
+    validations:
+      required: false
+
+  - type: textarea
+    id: reason
+    attributes:
+      label: Reason
+      description: "Brief explanation — e.g. wrong word choice, proper noun misspelled, missed negation, register mismatch"
+    validations:
+      required: true
